@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title id="siteTitle">ArenaBoard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#05070d;--surface:#0d111c;--card:#111827;--card2:#161f30;
+  --border:#1a2235;--border2:#243049;--accent:#5b78ff;--accent2:#7b94ff;
+  --glow:rgba(91,120,255,.15);--gold:#f5c518;--silver:#a0b4c8;--bronze:#c87941;
+  --text:#eef1f8;--sub:#7a8599;--muted:#3d4a60;
+  --green:#22d3a0;--red:#f56565;--orange:#ff6b35;
+  --input:#090d18;--r:14px;--r2:20px;--r3:28px;
+  --sh:0 8px 32px rgba(0,0,0,.45);--sh2:0 20px 60px rgba(0,0,0,.6);
+}
+[data-theme="light"]{
+  --bg:#f0f4ff;--surface:#fff;--card:#f7f9ff;--card2:#eef1fb;
+  --border:#dde3f5;--border2:#c5cfe8;--text:#0f172a;--sub:#4b5775;--muted:#9aa3b8;
+  --input:#eef1fb;--glow:rgba(91,120,255,.08);
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:99px}
+
+/* ── DB BAR ── */
+#dbBar{position:fixed;top:0;left:0;height:2px;width:0;z-index:9999;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:0 2px 2px 0;transition:width .4s,opacity .4s}
+#dbBar.loading{width:70%;animation:pulse .9s ease-in-out infinite alternate}
+#dbBar.done{width:100%;opacity:0;transition:width .3s,opacity .7s .3s}
+#dbBar.err{width:100%;background:var(--red)}
+@keyframes pulse{from{opacity:.5}to{opacity:1}}
+
+/* ── LOADING ── */
+#loadScreen{position:fixed;inset:0;background:var(--bg);z-index:8000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.1rem;transition:opacity .4s,visibility .4s}
+#loadScreen.out{opacity:0;visibility:hidden;pointer-events:none}
+.spin{width:44px;height:44px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-logo{font-size:1.6rem;font-weight:900;letter-spacing:-.05em}
+.load-logo em{font-style:normal;color:var(--accent)}
+.load-sub{font-size:.75rem;color:var(--muted)}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:.8rem 1.4rem;border-bottom:1px solid var(--border);position:sticky;top:0;z:500;background:rgba(5,7,13,.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);z-index:500}
+[data-theme="light"] .topbar{background:rgba(240,244,255,.92)}
+.logo{display:flex;align-items:center;gap:.5rem;font-weight:900;font-size:1rem;letter-spacing:-.04em;cursor:pointer;transition:opacity .2s;user-select:none}
+.logo:hover{opacity:.7}
+.logo-img{width:28px;height:28px;border-radius:7px;object-fit:cover;display:none}
+.logo-img.vis{display:block}
+.logo em{font-style:normal;color:var(--accent)}
+.tb-right{display:flex;align-items:center;gap:.55rem}
+.ico-btn{background:none;border:1px solid var(--border2);color:var(--sub);width:34px;height:34px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.9rem;transition:all .18s;flex-shrink:0}
+.ico-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--glow)}
+.user-chip{display:flex;align-items:center;gap:.4rem;background:var(--card);border:1px solid var(--border2);padding:.28rem .7rem .28rem .32rem;border-radius:99px;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .18s}
+.user-chip:hover{border-color:var(--accent);background:var(--glow)}
+.chip-av{width:22px;height:22px;border-radius:50%;background:var(--border2);display:flex;align-items:center;justify-content:center;font-size:.7rem;overflow:hidden;flex-shrink:0}
+.chip-av img{width:100%;height:100%;object-fit:cover}
+.guest-chip{display:flex;align-items:center;gap:.38rem;background:var(--card);border:1px solid var(--border);padding:.28rem .75rem;border-radius:99px;font-size:.76rem;font-weight:600;color:var(--sub)}
+.guest-login{padding:.28rem .72rem;border-radius:8px;border:1px solid var(--accent);background:none;color:var(--accent);font-size:.76rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s}
+.guest-login:hover{background:var(--glow)}
+.dd-wrap{position:relative}
+.dd{position:absolute;top:calc(100% + .45rem);right:0;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);padding:.32rem;min-width:195px;z-index:600;opacity:0;pointer-events:none;transform:translateY(-7px) scale(.97);transition:all .17s;box-shadow:var(--sh2)}
+.dd.open{opacity:1;pointer-events:all;transform:translateY(0) scale(1)}
+.dd-item{display:flex;align-items:center;gap:.65rem;padding:.55rem .8rem;border-radius:9px;cursor:pointer;font-size:.83rem;font-weight:600;border:none;background:none;color:var(--text);width:100%;font-family:inherit;text-align:left;transition:background .12s}
+.dd-item:hover{background:var(--card2)}
+.dd-item.red{color:var(--red)}
+.dd-item.red:hover{background:rgba(245,101,101,.07)}
+.dd-sep{height:1px;background:var(--border);margin:.28rem .45rem}
+
+/* ── OVERLAY / MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:700;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;pointer-events:none;transition:opacity .22s}
+.overlay.show{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r3);padding:1.9rem;width:100%;max-width:430px;max-height:92vh;overflow-y:auto;transform:translateY(16px) scale(.98);transition:transform .22s}
+.overlay.show .modal{transform:translateY(0) scale(1)}
+.modal-title{font-size:1.2rem;font-weight:900;letter-spacing:-.04em;margin-bottom:.22rem}
+.modal-sub{font-size:.78rem;color:var(--sub);margin-bottom:1.4rem}
+.tabs{display:flex;gap:.35rem;margin-bottom:1.3rem;background:var(--card);padding:.28rem;border-radius:11px}
+.tab{flex:1;padding:.48rem;border-radius:8px;border:none;background:none;color:var(--sub);font-size:.8rem;font-weight:700;cursor:pointer;transition:all .18s;font-family:inherit}
+.tab.active{background:var(--accent);color:#fff;box-shadow:0 2px 12px rgba(91,120,255,.32)}
+.field{margin-bottom:.82rem}
+.field label{display:block;font-size:.68rem;font-weight:700;color:var(--sub);margin-bottom:.28rem;letter-spacing:.07em;text-transform:uppercase}
+.field input,.field select{width:100%;background:var(--input);border:1.5px solid var(--border2);border-radius:9px;padding:.6rem .88rem;color:var(--text);font-size:.85rem;font-family:inherit;outline:none;transition:border-color .18s}
+.field input:focus{border-color:var(--accent)}
+.btn-main{width:100%;padding:.75rem;border-radius:11px;border:none;background:var(--accent);color:#fff;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .18s;margin-top:.35rem;font-family:inherit}
+.btn-main:hover{background:var(--accent2);box-shadow:0 4px 18px rgba(91,120,255,.38)}
+.btn-main:disabled{opacity:.44;cursor:not-allowed;box-shadow:none}
+.modal-err{color:var(--red);font-size:.76rem;margin-top:.55rem;min-height:.9rem;font-weight:600}
+.av-row{display:flex;align-items:center;gap:.9rem;margin-bottom:1rem}
+.av-circle{width:58px;height:58px;border-radius:50%;border:2px dashed var(--border2);display:flex;align-items:center;justify-content:center;font-size:1.4rem;cursor:pointer;overflow:hidden;flex-shrink:0;background:var(--input);transition:border-color .18s}
+.av-circle:hover{border-color:var(--accent)}
+.av-circle img{width:100%;height:100%;object-fit:cover}
+.av-hint{font-size:.72rem;color:var(--sub);line-height:1.6}
+.av-hint b{color:var(--text)}
+#avatarInput,#logoInput,#profileAvatarInput{display:none}
+.div-pick{margin-bottom:.9rem}
+.div-pick-lbl{font-size:.68rem;font-weight:700;color:var(--sub);letter-spacing:.07em;text-transform:uppercase;display:block;margin-bottom:.25rem}
+.div-pick-note{font-size:.68rem;color:var(--muted);font-style:italic;margin-bottom:.5rem;display:block}
+.div-grid{display:grid;grid-template-columns:1fr 1fr;gap:.38rem}
+.dpbtn{background:var(--input);border:1.5px solid var(--border2);border-radius:9px;padding:.5rem .65rem;color:var(--sub);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .16s;display:flex;align-items:center;gap:.38rem;font-family:inherit;width:100%}
+.dpbtn:hover{color:var(--text)}
+.dpbtn.d-RSOF.sel{border-color:#e53e3e;background:rgba(229,62,62,.08);color:#e53e3e}
+.dpbtn.d-CHARLIE.sel{border-color:var(--accent);background:rgba(91,120,255,.09);color:var(--accent)}
+.dpbtn.d-BRAVO.sel{border-color:#63b3ed;background:rgba(99,179,237,.07);color:#63b3ed}
+.dpbtn.d-ALPHA.sel{border-color:var(--gold);background:rgba(245,197,24,.07);color:var(--gold)}
+.dpbtn.none-dp{grid-column:1/-1;justify-content:center;font-style:italic;font-size:.74rem;color:var(--muted)}
+.dpbtn.none-dp.sel{border-color:var(--muted);background:rgba(61,74,96,.1);color:var(--sub)}
+.div-badge{font-size:.58rem;font-weight:700;padding:1px 6px;border-radius:20px;display:inline-block;vertical-align:middle;margin-left:.22rem}
+.div-RSOF{background:rgba(229,62,62,.11);color:#e53e3e}
+.div-CHARLIE{background:rgba(91,120,255,.11);color:var(--accent2)}
+.div-BRAVO{background:rgba(99,179,237,.11);color:#63b3ed}
+.div-ALPHA{background:rgba(245,197,24,.11);color:var(--gold)}
+.or-div{display:flex;align-items:center;gap:.65rem;margin:.85rem 0 .55rem;color:var(--muted);font-size:.74rem}
+.or-div::before,.or-div::after{content:'';flex:1;height:1px;background:var(--border)}
+.btn-ghost{width:100%;padding:.68rem;border-radius:11px;border:1.5px solid var(--border2);background:none;color:var(--sub);font-size:.86rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s}
+.btn-ghost:hover{border-color:var(--border2);background:var(--card);color:var(--text)}
+.guest-note{text-align:center;font-size:.68rem;color:var(--muted);margin-top:.45rem}
+.guest-banner{background:rgba(91,120,255,.05);border:1px solid rgba(91,120,255,.18);border-radius:var(--r);padding:.7rem 1rem;margin-bottom:1.4rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap}
+.gb-txt{font-size:.78rem;color:var(--sub)}
+.gb-txt b{color:var(--text)}
+
+/* ── PAGES ── */
+#homePage,#lbPage,#topPage,#streakPage{display:none}
+
+/* ── HOME ── */
+.home-wrap{max-width:700px;margin:0 auto;padding:2.2rem 1.2rem 5rem}
+.home-hero{text-align:center;margin-bottom:2.3rem}
+.home-logo-big{width:68px;height:68px;border-radius:16px;object-fit:cover;margin:0 auto .8rem;display:none;border:1.5px solid var(--border2);box-shadow:0 0 0 5px var(--glow)}
+.home-logo-big.vis{display:block}
+.home-hero h1{font-size:clamp(1.9rem,6vw,3rem);font-weight:900;letter-spacing:-.06em;line-height:1.05;margin-bottom:.5rem}
+.home-hero h1 em{font-style:normal;color:var(--accent)}
+.home-hero p{color:var(--sub);font-size:.88rem}
+.home-profile{background:var(--card);border:1px solid var(--border2);border-radius:var(--r2);padding:1.2rem 1.4rem;margin-bottom:1.8rem;display:flex;align-items:center;gap:1rem}
+.hp-av{width:52px;height:52px;border-radius:50%;background:var(--border2);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;overflow:hidden;border:2px solid var(--border2);cursor:pointer;transition:border-color .18s}
+.hp-av:hover{border-color:var(--accent)}
+.hp-av img{width:100%;height:100%;object-fit:cover}
+.hp-info{flex:1;min-width:0}
+.hp-name{font-size:.97rem;font-weight:800;letter-spacing:-.03em;margin-bottom:.08rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:.35rem;flex-wrap:wrap}
+.hp-meta{font-size:.72rem;color:var(--sub);margin-bottom:.45rem}
+.hp-stats{display:flex;gap:.8rem;flex-wrap:wrap}
+.hp-stat{font-size:.7rem;font-weight:700;color:var(--muted);display:flex;align-items:center;gap:.2rem}
+.hp-stat span{font-family:'JetBrains Mono',monospace;color:var(--text);font-size:.78rem}
+.home-grid{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
+@media(max-width:440px){.home-grid{grid-template-columns:1fr}}
+.hcard{background:var(--card);border:1px solid var(--border2);border-radius:var(--r2);padding:1.5rem 1.2rem 1.3rem;cursor:pointer;position:relative;overflow:hidden;transition:transform .22s,border-color .22s,box-shadow .22s}
+.hcard.full{grid-column:1/-1}
+.hcard::after{content:'';position:absolute;inset:0;opacity:0;transition:opacity .22s;border-radius:inherit;pointer-events:none}
+.hcard:hover{transform:translateY(-5px)}
+.hcard.c-lb:hover{border-color:var(--accent);box-shadow:0 8px 30px var(--glow)}
+.hcard.c-lb::after{background:radial-gradient(ellipse at 20% 0%,var(--glow),transparent 65%);opacity:1}
+.hcard.c-streak:hover{border-color:var(--orange);box-shadow:0 8px 30px rgba(255,107,53,.11)}
+.hcard.c-streak::after{background:radial-gradient(ellipse at 20% 0%,rgba(255,107,53,.06),transparent 65%);opacity:1}
+.hcard.c-top:hover{border-color:var(--gold);box-shadow:0 8px 30px rgba(245,197,24,.09)}
+.hcard.c-top::after{background:radial-gradient(ellipse at 20% 0%,rgba(245,197,24,.05),transparent 65%);opacity:1}
+.hcard-badge{position:absolute;top:.85rem;right:.85rem;font-size:.6rem;font-weight:700;padding:2px 7px;border-radius:20px;z-index:1}
+.badge-lb{background:rgba(91,120,255,.11);color:var(--accent);border:1px solid rgba(91,120,255,.2)}
+.badge-streak{background:rgba(255,107,53,.09);color:var(--orange);border:1px solid rgba(255,107,53,.18)}
+.badge-top{background:rgba(245,197,24,.09);color:var(--gold);border:1px solid rgba(245,197,24,.18)}
+.hcard-icon{font-size:2.3rem;margin-bottom:.72rem;display:block;position:relative;z-index:1;line-height:1}
+.hcard h2{font-size:.97rem;font-weight:800;margin-bottom:.28rem;letter-spacing:-.02em;position:relative;z-index:1}
+.hcard p{font-size:.73rem;color:var(--sub);line-height:1.55;position:relative;z-index:1}
+
+/* ── BACK BTN ── */
+.back-btn{display:inline-flex;align-items:center;gap:.42rem;background:var(--card);border:1px solid var(--border2);color:var(--sub);padding:.4rem .88rem;border-radius:9px;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .18s;font-family:inherit;margin-bottom:1.2rem}
+.back-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--glow)}
+
+/* ── LB PAGE ── */
+.lb-wrap{max-width:800px;margin:0 auto;padding:1.4rem 1.2rem 5rem}
+.page-hero{text-align:center;margin-bottom:1.8rem}
+.page-hero h1{font-size:clamp(1.6rem,4vw,2.3rem);font-weight:900;letter-spacing:-.05em;margin-bottom:.28rem}
+.page-hero h1 em{font-style:normal;color:var(--accent)}
+.page-hero p{color:var(--sub);font-size:.82rem}
+.hero-logo-sm{width:52px;height:52px;border-radius:12px;object-fit:cover;margin:0 auto .65rem;display:none;border:1.5px solid var(--border2)}
+.hero-logo-sm.vis{display:block}
+.season-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;flex-wrap:wrap;gap:.65rem}
+.season-info{font-size:.76rem;color:var(--sub)}
+.season-info b{color:var(--text)}
+.countdown-pill{font-family:'JetBrains Mono',monospace;font-size:.73rem;background:var(--card);border:1px solid var(--border2);padding:.26rem .72rem;border-radius:99px;color:var(--accent)}
+.search-wrap{position:relative;margin-bottom:.82rem}
+.search-wrap input{width:100%;background:var(--card);border:1.5px solid var(--border2);border-radius:var(--r);padding:.7rem 1rem .7rem 2.7rem;color:var(--text);font-size:.85rem;font-family:inherit;outline:none;transition:border-color .18s}
+.search-wrap input:focus{border-color:var(--accent)}
+.search-ico{position:absolute;left:.88rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.div-filters{display:flex;gap:.38rem;flex-wrap:wrap;margin-bottom:1.2rem}
+.dfbtn{background:var(--card);border:1px solid var(--border2);color:var(--sub);padding:.28rem .68rem;border-radius:99px;font-size:.71rem;font-weight:700;cursor:pointer;transition:all .15s;font-family:inherit}
+.dfbtn:hover{color:var(--text)}
+.dfbtn.active{border-color:var(--accent);color:var(--accent);background:var(--glow)}
+.podium{display:flex;justify-content:center;align-items:flex-end;gap:.8rem;margin-bottom:1.8rem}
+.pod-card{flex:1;max-width:185px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r2);padding:1.1rem .75rem .9rem;text-align:center;position:relative;transition:transform .2s}
+.pod-card:hover{transform:translateY(-4px)}
+.pod-card.r1{border-color:rgba(245,197,24,.28);box-shadow:0 0 28px rgba(245,197,24,.06);order:2;padding-top:1.7rem}
+.pod-card.r2{order:1}
+.pod-card.r3{order:3}
+.pod-crown{font-size:1.3rem;position:absolute;top:-.85rem;left:50%;transform:translateX(-50%)}
+.pod-av{width:50px;height:50px;border-radius:50%;margin:0 auto .52rem;display:flex;align-items:center;justify-content:center;font-size:1.3rem;background:var(--border2);overflow:hidden}
+.pod-av img{width:100%;height:100%;object-fit:cover}
+.r1 .pod-av{width:60px;height:60px;border:2px solid var(--gold)}
+.r2 .pod-av{border:2px solid var(--silver)}
+.r3 .pod-av{border:2px solid var(--bronze)}
+.pod-medal{font-family:'JetBrains Mono',monospace;font-size:.63rem;font-weight:700;padding:2px 6px;border-radius:20px;display:inline-block;margin-bottom:.38rem}
+.r1 .pod-medal{background:rgba(245,197,24,.11);color:var(--gold)}
+.r2 .pod-medal{background:rgba(160,180,200,.1);color:var(--silver)}
+.r3 .pod-medal{background:rgba(200,121,65,.1);color:var(--bronze)}
+.pod-name{font-weight:700;font-size:.83rem;margin-bottom:.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pod-pts{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--sub)}
+.you-tag{font-size:.56rem;background:rgba(91,120,255,.14);color:var(--accent);padding:1px 5px;border-radius:4px;font-weight:700;margin-left:2px;vertical-align:middle}
+.lb-head{display:grid;grid-template-columns:44px 1fr 100px 60px;padding:0 .95rem .5rem;font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.lb-head .r{text-align:right}
+.lb-row{display:grid;grid-template-columns:44px 1fr 100px 60px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.7rem .95rem;margin-bottom:.38rem;transition:border-color .15s,transform .15s,box-shadow .15s}
+.lb-row:hover{border-color:var(--border2);transform:translateX(3px);box-shadow:0 4px 18px rgba(0,0,0,.18)}
+.lb-row.is-you{border-color:rgba(91,120,255,.28);background:rgba(91,120,255,.04)}
+.rank-n{font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--muted);font-weight:700}
+.pcell{display:flex;align-items:center;gap:.58rem;min-width:0}
+.mini-av{width:30px;height:30px;border-radius:50%;background:var(--border2);display:flex;align-items:center;justify-content:center;font-size:.82rem;flex-shrink:0;overflow:hidden}
+.mini-av img{width:100%;height:100%;object-fit:cover}
+.pname{font-weight:600;font-size:.84rem;display:flex;align-items:center;flex-wrap:wrap;gap:.18rem}
+.ptag{font-size:.65rem;color:var(--muted)}
+.score-c{font-family:'JetBrains Mono',monospace;font-size:.85rem;font-weight:700;text-align:right}
+.delta-c{font-family:'JetBrains Mono',monospace;font-size:.7rem;text-align:right;color:var(--muted)}
+.empty{text-align:center;padding:2.8rem 1rem;color:var(--muted)}
+.empty-ico{font-size:2.3rem;margin-bottom:.55rem}
+
+/* ── ADMIN PANEL ── */
+#adminPanel{display:none;margin-bottom:1.5rem}
+.admin-wrap{background:var(--card);border:1px solid var(--border2);border-radius:var(--r2);overflow:hidden;margin-bottom:.8rem}
+.admin-header{background:linear-gradient(135deg,rgba(91,120,255,.12),rgba(91,120,255,.04));padding:.9rem 1.3rem;border-bottom:1px solid var(--border2);display:flex;align-items:center;gap:.6rem}
+.admin-header-title{font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--sub)}
+.admin-body{padding:1.1rem 1.3rem}
+.admin-section{margin-bottom:1.1rem;padding-bottom:1.1rem;border-bottom:1px solid var(--border)}
+.admin-section:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.admin-sec-lbl{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.55rem;display:block}
+.admin-row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.a-input{flex:1;min-width:110px;background:var(--input);border:1.5px solid var(--border2);border-radius:8px;padding:.48rem .78rem;color:var(--text);font-size:.82rem;font-family:inherit;outline:none;transition:border-color .18s}
+.a-input:focus{border-color:var(--accent)}
+.a-input::placeholder{color:var(--muted)}
+.abtn{padding:.48rem .95rem;border-radius:8px;border:none;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .17s;white-space:nowrap;font-family:inherit;letter-spacing:-.01em}
+.abtn:hover{opacity:.85;transform:translateY(-1px)}
+.abtn-blue{background:var(--accent);color:#fff}
+.abtn-green{background:var(--green);color:#000}
+.abtn-orange{background:var(--orange);color:#fff}
+.abtn-red{background:var(--red);color:#fff}
+.abtn-gray{background:var(--border2);color:var(--text)}
+.user-list{display:grid;gap:.38rem}
+.user-row{display:flex;align-items:center;gap:.55rem;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:.5rem .78rem;transition:border-color .15s}
+.user-row:hover{border-color:var(--border2)}
+.ur-av{width:26px;height:26px;border-radius:50%;background:var(--border2);display:flex;align-items:center;justify-content:center;font-size:.72rem;flex-shrink:0;overflow:hidden}
+.ur-av img{width:100%;height:100%;object-fit:cover}
+.ur-name{flex:1;font-size:.8rem;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ur-div{font-size:.63rem;color:var(--muted)}
+.ur-pts{font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:700;margin-right:.35rem;color:var(--text)}
+.ur-actions{display:flex;gap:.28rem;flex-shrink:0}
+.ur-btn{padding:.26rem .52rem;border-radius:6px;border:none;font-size:.68rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .14s}
+.ur-btn:hover{opacity:.8}
+.ur-add{background:rgba(34,211,160,.11);color:var(--green)}
+.ur-del{background:rgba(245,101,101,.1);color:var(--red)}
+.logo-preview{width:44px;height:44px;border-radius:9px;border:1.5px dashed var(--border2);display:flex;align-items:center;justify-content:center;font-size:1.3rem;cursor:pointer;overflow:hidden;background:var(--input);flex-shrink:0;transition:border-color .18s}
+.logo-preview:hover{border-color:var(--accent)}
+.logo-preview img{width:100%;height:100%;object-fit:cover}
+.danger-zone{border-color:rgba(245,101,101,.18)!important}
+.danger-title{color:var(--red)!important}
+
+/* ── TOP PAGE ── */
+.top-wrap{max-width:580px;margin:0 auto;padding:1.4rem 1.2rem 5rem}
+.top-list{background:var(--card);border:1px solid var(--border2);border-radius:var(--r2);overflow:hidden}
+.top-head{display:grid;grid-template-columns:50px 1fr 80px 72px;padding:.58rem 1.1rem;border-bottom:1px solid var(--border);font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.top-head .r{text-align:right}
+.top-row{display:grid;grid-template-columns:50px 1fr 80px 72px;align-items:center;padding:.68rem 1.1rem;border-bottom:1px solid var(--border);transition:background .14s}
+.top-row:last-child{border-bottom:none}
+.top-row:hover{background:rgba(255,255,255,.013)}
+.top-row.is-you{background:rgba(91,120,255,.04)}
+.top-row.g1{background:rgba(245,197,24,.03)}
+.top-row.g2{background:rgba(160,180,200,.02)}
+.top-row.g3{background:rgba(200,121,65,.02)}
+.top-medal{font-size:1.15rem;text-align:center}
+.top-num{font-family:'JetBrains Mono',monospace;font-size:.76rem;color:var(--muted);font-weight:700;text-align:center}
+.top-player{display:flex;align-items:center;gap:.55rem;min-width:0}
+.top-av{width:30px;height:30px;border-radius:50%;background:var(--border2);display:flex;align-items:center;justify-content:center;font-size:.78rem;flex-shrink:0;overflow:hidden}
+.top-av img{width:100%;height:100%;object-fit:cover}
+.top-name{font-weight:600;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-tag{font-size:.64rem;color:var(--muted)}
+.top-pts{font-family:'JetBrains Mono',monospace;font-size:.86rem;font-weight:700;text-align:right}
+.top-pts.g1{color:var(--gold)}.top-pts.g2{color:var(--silver)}.top-pts.g3{color:var(--bronze)}
+.top-streak{font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:700;text-align:right;color:var(--orange)}
+
+/* ── STREAK PAGE ── */
+.streak-wrap{max-width:700px;margin:0 auto;padding:1.4rem 1.2rem 5rem}
+.streak-hero{text-align:center;margin-bottom:1.9rem}
+.streak-hero h1{font-size:clamp(1.5rem,4vw,2.2rem);font-weight:900;letter-spacing:-.05em;margin-bottom:.28rem}
+.streak-hero h1 .fire{color:var(--orange)}
+.streak-hero p{color:var(--sub);font-size:.82rem}
+.sstats{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-bottom:1.3rem}
+.sstat{background:var(--card);border:1px solid var(--border2);border-radius:var(--r);padding:.9rem .7rem;text-align:center}
+.sstat-num{font-family:'JetBrains Mono',monospace;font-size:1.45rem;font-weight:800;display:block;margin-bottom:.1rem}
+.sstat-num.fire{color:var(--orange)}.sstat-num.gold{color:var(--gold)}
+.sstat-lbl{font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.absen-card{background:var(--card);border:1px solid var(--border2);border-radius:var(--r2);padding:1.85rem;text-align:center;margin-bottom:1.3rem;position:relative;overflow:hidden}
+.absen-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--orange),#ff9a5c)}
+.absen-date{font-size:.73rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:.75rem}
+.absen-ico{font-size:3rem;display:block;margin-bottom:.45rem;line-height:1}
+.absen-txt{font-size:.95rem;font-weight:800;margin-bottom:.28rem}
+.absen-sub{font-size:.76rem;color:var(--sub);margin-bottom:1.3rem}
+.hadir-btn{display:inline-flex;align-items:center;gap:.5rem;padding:.85rem 2rem;border-radius:var(--r);border:none;background:linear-gradient(135deg,var(--orange),#ff9a5c);color:#fff;font-size:.92rem;font-weight:800;cursor:pointer;transition:all .2s;font-family:inherit;box-shadow:0 4px 18px rgba(255,107,53,.26);letter-spacing:-.01em}
+.hadir-btn:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(255,107,53,.36)}
+.hadir-btn:disabled{background:var(--border2);color:var(--muted);cursor:not-allowed;box-shadow:none;transform:none}
+.hadir-btn.done{background:linear-gradient(135deg,var(--green),#1ab87e);box-shadow:0 4px 18px rgba(34,211,160,.2)}
+.cal-wrap{background:var(--card);border:1px solid var(--border2);border-radius:var(--r2);padding:1.3rem;margin-bottom:1.3rem}
+.cal-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem}
+.cal-lbl{font-weight:800;font-size:.88rem}
+.cal-nav{background:none;border:1px solid var(--border2);color:var(--sub);width:25px;height:25px;border-radius:7px;cursor:pointer;font-size:.82rem;display:flex;align-items:center;justify-content:center;transition:all .14s}
+.cal-nav:hover{border-color:var(--accent);color:var(--accent)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.cal-dlbl{font-size:.6rem;color:var(--muted);font-weight:700;padding:.2rem 0;text-transform:uppercase}
+.cal-day{width:100%;aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:600;color:var(--muted);transition:all .14s}
+.cal-day.in{color:var(--sub)}
+.cal-day.hadir{background:rgba(255,107,53,.13);color:var(--orange);font-weight:700}
+.cal-day.today{background:var(--border2);color:var(--text)}
+.cal-day.today.hadir{background:linear-gradient(135deg,var(--orange),#ff9a5c);color:#fff;box-shadow:0 2px 7px rgba(255,107,53,.28)}
+.sboard{background:var(--card);border:1px solid var(--border2);border-radius:var(--r2);overflow:hidden}
+.sboard-head{padding:.85rem 1.1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.sboard-title{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--sub)}
+.sboard-row{display:grid;grid-template-columns:36px 1fr 76px 68px;align-items:center;padding:.62rem 1.1rem;border-bottom:1px solid var(--border);transition:background .14s}
+.sboard-row:last-child{border-bottom:none}
+.sboard-row:hover{background:rgba(255,255,255,.013)}
+.sboard-row.is-you{background:rgba(91,120,255,.04)}
+.sb-rank{font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--muted);font-weight:700}
+.sb-player{display:flex;align-items:center;gap:.48rem;min-width:0}
+.sb-av{width:26px;height:26px;border-radius:50%;background:var(--border2);display:flex;align-items:center;justify-content:center;font-size:.72rem;flex-shrink:0;overflow:hidden}
+.sb-av img{width:100%;height:100%;object-fit:cover}
+.sb-name{font-weight:600;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-streak{font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:700;color:var(--orange);text-align:right}
+.sb-total{font-family:'JetBrains Mono',monospace;font-size:.73rem;color:var(--muted);text-align:right}
+
+/* ── PROFILE MODAL ── */
+.pav-big{width:72px;height:72px;border-radius:50%;border:2px dashed var(--border2);display:flex;align-items:center;justify-content:center;font-size:1.7rem;cursor:pointer;overflow:hidden;background:var(--input);flex-shrink:0;position:relative;transition:border-color .18s}
+.pav-big:hover{border-color:var(--accent)}
+.pav-big img{width:100%;height:100%;object-fit:cover}
+.pav-ovr{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .18s;border-radius:50%;font-size:1rem}
+.pav-big:hover .pav-ovr{opacity:1}
+.pinfo-row{display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem}
+.pum b{display:block;font-size:.98rem;font-weight:800;margin-bottom:.1rem}
+.pum span{font-size:.74rem;color:var(--sub)}
+.pstats{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1.1rem}
+.pstat{background:var(--input);border:1px solid var(--border);border-radius:9px;padding:.65rem .45rem;text-align:center}
+.pstat-n{font-family:'JetBrains Mono',monospace;font-size:.97rem;font-weight:700;display:block;margin-bottom:.08rem}
+.pstat-l{font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.btn-outline{width:100%;padding:.65rem;border-radius:10px;border:1.5px solid var(--border2);background:none;color:var(--sub);font-size:.84rem;font-weight:700;cursor:pointer;transition:all .18s;font-family:inherit}
+.btn-outline:hover{border-color:var(--border2);background:var(--card);color:var(--text)}
+
+/* ── ABOUT / SETTINGS ── */
+.about-logo-wrap{text-align:center;margin-bottom:1.1rem}
+.about-logo-img{width:64px;height:64px;border-radius:15px;object-fit:cover;border:1.5px solid var(--border2);display:none}
+.about-logo-img.vis{display:inline-block}
+.about-logo-ico{font-size:2.6rem}
+.about-ttl{font-size:1.12rem;font-weight:800;text-align:center;margin-bottom:.2rem}
+.about-sub{font-size:.77rem;color:var(--sub);text-align:center;margin-bottom:1.2rem}
+.a-div{height:1px;background:var(--border);margin:.9rem 0}
+.a-sec{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.55rem;display:block}
+.div-list{display:grid;grid-template-columns:1fr 1fr;gap:.42rem;margin-bottom:.4rem}
+.div-item{background:var(--input);border:1px solid var(--border);border-radius:8px;padding:.48rem .72rem;font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:.38rem}
+.a-ver{font-size:.68rem;color:var(--muted);text-align:center;margin-top:1rem;font-family:'JetBrains Mono',monospace}
+.sm-row{display:flex;align-items:center;justify-content:space-between;padding:.58rem 0;border-bottom:1px solid var(--border)}
+.sm-row:last-child{border-bottom:none}
+.sm-lbl{font-size:.84rem;font-weight:600}
+.sm-sub{font-size:.7rem;color:var(--sub);margin-top:.07rem}
+.toggle{width:36px;height:19px;border-radius:20px;background:var(--border2);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;border:none}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;top:2.5px;left:2.5px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .2s}
+.toggle.on::after{left:19.5px}
+
+/* ── ADD PTS MODAL ── */
+#addPtsOverlay .modal{max-width:350px}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:1.4rem;right:1.4rem;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);padding:.65rem 1rem;font-size:.8rem;font-weight:600;z-index:9000;transform:translateY(80px);opacity:0;transition:all .28s;max-width:280px;box-shadow:var(--sh);display:flex;align-items:center;gap:.5rem}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.success{border-color:var(--green);color:var(--green)}
+#toast.error{border-color:var(--red);color:var(--red)}
+#toast.info{border-color:var(--accent);color:var(--accent)}
+
+@media(max-width:480px){
+  .lb-head,.lb-row{grid-template-columns:36px 1fr 82px 52px}
+  .sboard-row{grid-template-columns:32px 1fr 70px 62px}
+  .podium{gap:.5rem}
+}
+</style>
+</head>
+<body>
+
+<div id="dbBar"></div>
+
+<!-- LOADING -->
+<div id="loadScreen">
+  <div class="spin"></div>
+  <div class="load-logo">Arena<em>Board</em></div>
+  <div class="load-sub">Menghubungkan ke Firebase…</div>
+</div>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="logo" onclick="goHome()">
+    <img class="logo-img" id="logoTopbar" src="" alt=""/>
+    <span id="logoText">⚡ Arena<em>Board</em></span>
+  </div>
+  <div class="tb-right">
+    <button class="ico-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
+    <div id="userChip" class="user-chip" style="display:none" onclick="openProfile()">
+      <div class="chip-av" id="chipAv">👤</div>
+      <span id="chipName">—</span>
+    </div>
+    <div id="guestChip" class="guest-chip" style="display:none">👁️ Tamu</div>
+    <button id="guestLoginBtn" class="guest-login" style="display:none" onclick="showAuth('login')">Masuk</button>
+    <div class="dd-wrap" id="settingsWrap" style="display:none">
+      <button class="ico-btn" onclick="toggleDD(event)">⚙️</button>
+      <div class="dd" id="ddMenu">
+        <button class="dd-item" onclick="openProfile();closeDD()">👤 Profil Saya</button>
+        <button class="dd-item" onclick="openSettings();closeDD()">⚙️ Pengaturan</button>
+        <button class="dd-item" onclick="openAbout();closeDD()">ℹ️ Tentang APRI</button>
+        <div class="dd-sep"></div>
+        <button class="dd-item red" onclick="doLogout()">🚪 Keluar</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- AUTH MODAL -->
+<div class="overlay show" id="authOverlay">
+  <div class="modal">
+    <div class="modal-title">👋 Selamat datang</div>
+    <div class="modal-sub">Masuk atau daftar untuk bergabung</div>
+    <div class="tabs">
+      <button class="tab active" id="tabLogin" onclick="switchTab('login')">Masuk</button>
+      <button class="tab" id="tabReg" onclick="switchTab('register')">Daftar</button>
+    </div>
+    <div id="loginForm">
+      <div class="field"><label>Username</label><input id="loginUser" placeholder="username kamu" autocomplete="username"/></div>
+      <div class="field"><label>Password</label><input type="password" id="loginPass" placeholder="••••••" autocomplete="current-password"/></div>
+      <button class="btn-main" id="loginBtn" onclick="doLogin()">Masuk →</button>
+    </div>
+    <div id="registerForm" style="display:none">
+      <div class="av-row">
+        <div class="av-circle" id="uploadCircle" onclick="document.getElementById('avatarInput').click()">📷</div>
+        <div class="av-hint"><b>Foto profil</b><br>Klik untuk upload<br>JPG/PNG · maks 2 MB</div>
+        <input type="file" id="avatarInput" accept="image/*" onchange="handleAvatar(event)"/>
+      </div>
+      <div class="field"><label>Username</label><input id="regUser" placeholder="3–20 karakter" autocomplete="username"/></div>
+      <div class="field"><label>Password</label><input type="password" id="regPass" placeholder="min 6 karakter" autocomplete="new-password"/></div>
+      <div class="field"><label>Konfirmasi Password</label><input type="password" id="regPass2" placeholder="ulangi password" autocomplete="new-password"/></div>
+      <div class="div-pick">
+        <span class="div-pick-lbl">Divisi</span>
+        <span class="div-pick-note">✱ Biarkan kosong jika tidak ada divisi</span>
+        <div class="div-grid">
+          <button type="button" class="dpbtn d-RSOF" data-div="RSOF" onclick="pickDiv('RSOF')">☠️ RSOF</button>
+          <button type="button" class="dpbtn d-CHARLIE" data-div="CHARLIE" onclick="pickDiv('CHARLIE')">🦅 CHARLIE</button>
+          <button type="button" class="dpbtn d-BRAVO" data-div="BRAVO" onclick="pickDiv('BRAVO')">⚓ BRAVO</button>
+          <button type="button" class="dpbtn d-ALPHA" data-div="ALPHA" onclick="pickDiv('ALPHA')">⚡ ALPHA</button>
+          <button type="button" class="dpbtn none-dp sel" data-div="" onclick="pickDiv('')">— Tidak ada divisi</button>
+        </div>
+      </div>
+      <button class="btn-main" id="registerBtn" onclick="doRegister()">Buat akun →</button>
+    </div>
+    <div class="modal-err" id="authErr"></div>
+    <div class="or-div"><span>atau</span></div>
+    <button class="btn-ghost" onclick="enterGuest()">👁️ Lihat sebagai Tamu</button>
+    <div class="guest-note">Tamu hanya bisa melihat, tidak bisa absen</div>
+  </div>
+</div>
+
+<!-- PROFILE MODAL -->
+<div class="overlay" id="profileOverlay" onclick="if(event.target===this)closeProfile()">
+  <div class="modal">
+    <div class="modal-title">👤 Profil Saya</div>
+    <div class="modal-sub" id="profileJoined">—</div>
+    <div class="pinfo-row">
+      <div class="pav-big" id="profileAvBig" onclick="document.getElementById('profileAvatarInput').click()">
+        <span id="profileAvSpan">👤</span>
+        <div class="pav-ovr">📷</div>
+      </div>
+      <div class="pum">
+        <b id="profileUsername">—</b>
+        <span id="profileDivBadge"></span>
+        <span id="profileDivTxt" style="display:block;margin-top:.2rem;font-size:.74rem;color:var(--sub)"></span>
+      </div>
+    </div>
+    <input type="file" id="profileAvatarInput" accept="image/*" onchange="handleProfileAvatar(event)"/>
+    <div class="pstats">
+      <div class="pstat"><span class="pstat-n" id="psPts">0</span><span class="pstat-l">Poin</span></div>
+      <div class="pstat"><span class="pstat-n" style="color:var(--orange)" id="psStreak">0🔥</span><span class="pstat-l">Streak</span></div>
+      <div class="pstat"><span class="pstat-n" style="color:var(--gold)" id="psTotal">0</span><span class="pstat-l">Total Hadir</span></div>
+    </div>
+    <button class="btn-outline" onclick="closeProfile()">Tutup</button>
+  </div>
+</div>
+
+<!-- ABOUT MODAL -->
+<div class="overlay" id="aboutOverlay" onclick="if(event.target===this)closeAbout()">
+  <div class="modal">
+    <div class="about-logo-wrap">
+      <img class="about-logo-img" id="aboutLogoImg" src="" alt=""/>
+      <span class="about-logo-ico" id="aboutLogoIco">⚡</span>
+    </div>
+    <div class="about-ttl" id="aboutTitle">ArenaBoard</div>
+    <div class="about-sub">Platform kompetisi &amp; absensi digital untuk anggota APRI</div>
+    <div class="a-div"></div>
+    <span class="a-sec">Divisi Terdaftar</span>
+    <div class="div-list">
+      <div class="div-item">☠️ RSOF</div>
+      <div class="div-item">🦅 CHARLIE</div>
+      <div class="div-item">⚓ BRAVO</div>
+      <div class="div-item">⚡ ALPHA</div>
+    </div>
+    <div class="a-div"></div>
+    <span class="a-sec">Fitur</span>
+    <div style="font-size:.79rem;color:var(--sub);line-height:1.9">
+      🏆 Leaderboard poin mingguan<br>
+      🔥 Daily streak &amp; absensi<br>
+      🏅 Top 10 pemain terbaik<br>
+      👤 Profil &amp; avatar<br>
+      🔥 Database Firebase (realtime)<br>
+      🌙 Mode gelap / terang
+    </div>
+    <div class="a-ver">v4.0-Firebase · ArenaBoard · APRI</div>
+    <div style="margin-top:.9rem"><button class="btn-outline" onclick="closeAbout()">Tutup</button></div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="overlay" id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <div class="modal-title">⚙️ Pengaturan</div>
+    <div class="modal-sub">Sesuaikan tampilan &amp; akun kamu</div>
+    <span class="a-sec">Tampilan</span>
+    <div class="sm-row">
+      <div><div class="sm-lbl">Mode Gelap</div><div class="sm-sub">Aktifkan tema gelap</div></div>
+      <button class="toggle" id="darkToggle" onclick="toggleTheme()"></button>
+    </div>
+    <div id="adminStgSection" style="display:none">
+      <div class="a-div"></div>
+      <span class="a-sec">Admin — Situs</span>
+      <div class="field" style="margin-top:.6rem"><label>Nama Website</label>
+        <div style="display:flex;gap:.45rem">
+          <input class="a-input" id="stgSiteName" placeholder="Nama website…" style="flex:1"/>
+          <button class="abtn abtn-green" onclick="saveSiteNameStg()">Simpan</button>
+        </div>
+      </div>
+      <div class="sm-row">
+        <div><div class="sm-lbl">Logo</div><div class="sm-sub">Upload logo topbar &amp; hero</div></div>
+        <button class="abtn abtn-gray" onclick="document.getElementById('logoInput').click()">Upload</button>
+      </div>
+    </div>
+    <div style="margin-top:.9rem"><button class="btn-outline" onclick="closeSettings()">Tutup</button></div>
+  </div>
+</div>
+
+<!-- ADD POINTS MODAL -->
+<div class="overlay" id="addPtsOverlay">
+  <div class="modal" style="max-width:350px">
+    <div class="modal-title">✏️ Edit Poin</div>
+    <div class="modal-sub">User: <b id="addPtsTarget">—</b></div>
+    <div class="field"><label>Jumlah Poin</label><input type="number" id="ptsInput" placeholder="contoh: 500" min="0"/></div>
+    <div style="display:flex;gap:.45rem;margin-top:.35rem">
+      <button class="btn-main" style="background:var(--green);color:#000" onclick="confirmAdd()">+ Tambah</button>
+      <button class="btn-main" style="background:var(--accent)" onclick="confirmSet()">= Set</button>
+      <button class="btn-main" style="background:var(--border2);color:var(--sub);flex:0.6" onclick="closeAddPts()">✕</button>
+    </div>
+    <div class="modal-err" id="ptsErr"></div>
+  </div>
+</div>
+
+<input type="file" id="logoInput" accept="image/*" onchange="handleLogoUpload(event)" style="display:none"/>
+
+<!-- HOME PAGE -->
+<div id="homePage">
+  <div class="home-wrap">
+    <div class="home-hero">
+      <img class="home-logo-big" id="homeHeroLogo" src="" alt=""/>
+      <h1 id="homeHeroTitle">Arena<em>Board</em></h1>
+      <p>Pilih aktivitas yang ingin kamu lakukan</p>
+    </div>
+    <div class="home-profile" id="homeProfile" style="display:none">
+      <div class="hp-av" id="hpAv" onclick="openProfile()">👤</div>
+      <div class="hp-info">
+        <div class="hp-name" id="hpName">—</div>
+        <div class="hp-meta" id="hpMeta">—</div>
+        <div class="hp-stats">
+          <div class="hp-stat">🏆 <span id="hpPts">0</span> pts</div>
+          <div class="hp-stat">🔥 <span id="hpStreak">0</span> streak</div>
+          <div class="hp-stat">📅 <span id="hpTotal">0</span> hadir</div>
+        </div>
+      </div>
+    </div>
+    <div class="home-grid">
+      <div class="hcard full c-top" onclick="goTop()">
+        <span class="hcard-badge badge-top">Top 10</span>
+        <span class="hcard-icon">🏅</span>
+        <h2>Top Score</h2>
+        <p>10 pemain dengan poin tertinggi minggu ini</p>
+      </div>
+      <div class="hcard c-streak" onclick="goStreak()">
+        <span class="hcard-badge badge-streak">Harian</span>
+        <span class="hcard-icon">🔥</span>
+        <h2>Daily Streak</h2>
+        <p>Absen setiap hari, jaga streak kamu</p>
+      </div>
+      <div class="hcard c-lb" onclick="goLB()">
+        <span class="hcard-badge badge-lb">Kompetisi</span>
+        <span class="hcard-icon">🏆</span>
+        <h2>Leaderboard</h2>
+        <p>Ranking lengkap semua peserta</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LEADERBOARD PAGE -->
+<div id="lbPage">
+  <div class="lb-wrap">
+    <button class="back-btn" onclick="goHome()">← Kembali</button>
+
+    <!-- ADMIN PANEL -->
+    <div id="adminPanel">
+      <!-- User Management -->
+      <div class="admin-wrap">
+        <div class="admin-header"><span class="admin-header-title">👑 Manajemen Pemain</span></div>
+        <div class="admin-body">
+          <div id="adminUserList" class="user-list"></div>
+        </div>
+      </div>
+      <!-- Quick Points -->
+      <div class="admin-wrap">
+        <div class="admin-header"><span class="admin-header-title">⚡ Poin Cepat</span></div>
+        <div class="admin-body">
+          <span class="admin-sec-lbl">Username &amp; jumlah poin</span>
+          <div class="admin-row">
+            <input class="a-input" id="adminUser" placeholder="username…"/>
+            <input class="a-input" type="number" id="adminPts" placeholder="poin…" style="max-width:100px"/>
+            <button class="abtn abtn-green" onclick="adminAdd()">+ Tambah</button>
+            <button class="abtn abtn-blue" onclick="adminSet()">= Set</button>
+          </div>
+        </div>
+      </div>
+      <!-- Site Settings -->
+      <div class="admin-wrap">
+        <div class="admin-header"><span class="admin-header-title">🎨 Pengaturan Situs</span></div>
+        <div class="admin-body">
+          <div class="admin-section">
+            <span class="admin-sec-lbl">Nama Website</span>
+            <div class="admin-row">
+              <input class="a-input" id="siteNameInput" placeholder="Nama website…"/>
+              <button class="abtn abtn-green" onclick="saveSiteName()">Simpan</button>
+            </div>
+          </div>
+          <div class="admin-section">
+            <span class="admin-sec-lbl">Logo</span>
+            <div class="admin-row">
+              <div class="logo-preview" id="logoPreview" onclick="document.getElementById('logoInput').click()">🖼️</div>
+              <div style="flex:1;font-size:.76rem;color:var(--sub)">Klik untuk upload logo<br><span style="color:var(--muted)">PNG/JPG · maks 3 MB</span></div>
+              <button class="abtn abtn-red" onclick="removeLogo()">Hapus</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Danger Zone -->
+      <div class="admin-wrap danger-zone">
+        <div class="admin-header"><span class="admin-header-title danger-title">⚠️ Zona Berbahaya</span></div>
+        <div class="admin-body">
+          <div class="admin-row">
+            <button class="abtn abtn-red" onclick="adminResetPts()">🔄 Reset Semua Poin</button>
+            <button class="abtn abtn-gray" onclick="refreshData()">↻ Refresh Data</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-hero">
+      <img class="hero-logo-sm" id="heroLogo" src="" alt=""/>
+      <h1 id="heroTitle">Arena<em>Board</em></h1>
+      <p>Leaderboard Mingguan · Reset setiap Senin</p>
+    </div>
+    <div class="season-bar">
+      <div class="season-info">Minggu ini · <b id="weekRange">—</b></div>
+      <div class="countdown-pill" id="countdown">—</div>
+    </div>
+    <div class="search-wrap">
+      <span class="search-ico">🔍</span>
+      <input id="searchInput" placeholder="Cari pemain…" oninput="renderLB()"/>
+    </div>
+    <div class="div-filters">
+      <button class="dfbtn active" onclick="setDivF(this,'')">Semua</button>
+      <button class="dfbtn" onclick="setDivF(this,'RSOF')">☠️ RSOF</button>
+      <button class="dfbtn" onclick="setDivF(this,'CHARLIE')">🦅 CHARLIE</button>
+      <button class="dfbtn" onclick="setDivF(this,'BRAVO')">⚓ BRAVO</button>
+      <button class="dfbtn" onclick="setDivF(this,'ALPHA')">⚡ ALPHA</button>
+    </div>
+    <div id="podiumWrap" class="podium"></div>
+    <div class="lb-head"><span>#</span><span>Pemain</span><span class="r">Poin</span><span class="r">Δ</span></div>
+    <div id="boardRows"></div>
+  </div>
+</div>
+
+<!-- TOP SCORE PAGE -->
+<div id="topPage">
+  <div class="top-wrap">
+    <button class="back-btn" onclick="goHome()">← Kembali</button>
+    <div class="page-hero">
+      <h1>🏅 Top Score</h1>
+      <p>10 pemain dengan poin tertinggi minggu ini</p>
+    </div>
+    <div class="top-list">
+      <div class="top-head"><span>#</span><span>Pemain</span><span class="r">Poin</span><span class="r">Streak</span></div>
+      <div id="topRows"></div>
+    </div>
+  </div>
+</div>
+
+<!-- STREAK PAGE -->
+<div id="streakPage">
+  <div class="streak-wrap">
+    <button class="back-btn" onclick="goHome()">← Kembali</button>
+    <div class="guest-banner" id="guestBannerStreak" style="display:none">
+      <div class="gb-txt">👁️ Kamu melihat sebagai <b>Tamu</b>. Login untuk absen!</div>
+      <button class="guest-login" onclick="showAuth('login')">Masuk</button>
+    </div>
+    <div class="streak-hero">
+      <h1>Daily <span class="fire">Streak</span></h1>
+      <p>Absen setiap hari untuk menjaga streak-mu 🔥</p>
+    </div>
+    <div class="sstats">
+      <div class="sstat"><span class="sstat-num fire" id="myStreak">0</span><span class="sstat-lbl">🔥 Streak</span></div>
+      <div class="sstat"><span class="sstat-num gold" id="myBest">0</span><span class="sstat-lbl">⭐ Terbaik</span></div>
+      <div class="sstat"><span class="sstat-num" id="myTotal">0</span><span class="sstat-lbl">📅 Total</span></div>
+    </div>
+    <div class="absen-card">
+      <div class="absen-date" id="absenDate">—</div>
+      <span class="absen-ico" id="absenIco">📋</span>
+      <div class="absen-txt" id="absenTxt">Belum absen hari ini</div>
+      <div class="absen-sub" id="absenSub">Klik tombol di bawah untuk mencatat kehadiranmu</div>
+      <button class="hadir-btn" id="hadirBtn" onclick="doHadir()">✋ Saya Hadir!</button>
+    </div>
+    <div class="cal-wrap">
+      <div class="cal-top">
+        <button class="cal-nav" onclick="calPrev()">‹</button>
+        <span class="cal-lbl" id="calLabel">—</span>
+        <button class="cal-nav" onclick="calNext()">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+    <div class="sboard">
+      <div class="sboard-head"><span class="sboard-title">🔥 Streak Leaderboard</span></div>
+      <div id="sboardRows"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- FIREBASE SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { getDatabase, ref, set, get, update, remove, onValue } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDL6JXZBsm_vlXoSOcJ2n_N1K4XAckcVVA",
+  authDomain: "leaderboard-apri.firebaseapp.com",
+  databaseURL: "https://leaderboard-apri-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "leaderboard-apri",
+  storageBucket: "leaderboard-apri.firebasestorage.app",
+  messagingSenderId: "944353646864",
+  appId: "1:944353646864:web:47d2b1ea48048ec68e6d95",
+  measurementId: "G-EVQ0LWC1HF"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// ── FIREBASE HELPERS ──
+window.FB = {
+  async get(path) {
+    try { const snap = await get(ref(db, path)); return snap.exists() ? snap.val() : null; }
+    catch(e) { console.error('FB.get error:', e); return null; }
+  },
+  async set(path, val) {
+    try { await set(ref(db, path), val); return true; }
+    catch(e) { console.error('FB.set error:', e); return false; }
+  },
+  async update(path, val) {
+    try { await update(ref(db, path), val); return true; }
+    catch(e) { console.error('FB.update error:', e); return false; }
+  },
+  async remove(path) {
+    try { await remove(ref(db, path)); return true; }
+    catch(e) { console.error('FB.remove error:', e); return false; }
+  },
+  listen(path, cb) {
+    return onValue(ref(db, path), snap => cb(snap.exists() ? snap.val() : null));
+  }
+};
+
+// Signal app that Firebase is ready
+window.dispatchEvent(new Event('firebaseReady'));
+</script>
+
+<script>
+'use strict';
+
+// ── STATE ──
+let users = {}, siteSettings = { name: 'ArenaBoard', logo: null }, lastReset = 0;
+let session = null, isGuest = false;
+let pendingAvatar = null, selDiv = '', divF = '';
+let addPtsUser = null;
+let calY, calM;
+let darkMode = (lsGet('lb_theme') !== 'light');
+let firebaseReady = false;
+
+const ADMIN = 'admin';
+const PAGES = ['homePage', 'lbPage', 'topPage', 'streakPage'];
+const DIV_ICONS = { RSOF: '☠️', CHARLIE: '🦅', BRAVO: '⚓', ALPHA: '⚡' };
+
+function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+function lsDel(k) { try { localStorage.removeItem(k); } catch {} }
+
+// ── DB BAR ──
+function dbBar(state) {
+  const el = document.getElementById('dbBar');
+  el.className = state;
+  if (state === 'done') setTimeout(() => { el.style.width = '0'; el.className = ''; }, 800);
+}
+
+// ── WAIT FOR FIREBASE ──
+window.addEventListener('firebaseReady', async () => {
+  firebaseReady = true;
+  await initApp();
+});
+// Fallback timeout
+setTimeout(() => {
+  if (!firebaseReady) {
+    dbBar('err');
+    document.getElementById('loadScreen').classList.add('out');
+    toast('❌ Firebase gagal dimuat. Periksa koneksi.', 'error');
+  }
+}, 8000);
+
+async function initApp() {
+  dbBar('loading');
+  try {
+    // Load all data in parallel
+    const [u, r, s] = await Promise.all([
+      FB.get('users'),
+      FB.get('lastReset'),
+      FB.get('settings')
+    ]);
+    users = u || {};
+    lastReset = r || 0;
+    siteSettings = s || { name: 'ArenaBoard', logo: null };
+
+    // Ensure admin exists
+    if (!users[ADMIN]) {
+      users[ADMIN] = { pass: 'admin123', pts: 0, avatar: null, divisi: '', joined: Date.now(), streak: {}, bestStreak: 0, totalHadir: 0 };
+      await FB.set('users/' + ADMIN, users[ADMIN]);
+    }
+
+    // Real-time listener for users
+    FB.listen('users', (val) => {
+      if (val) {
+        users = val;
+        // Re-render current page if open
+        const lbOpen = document.getElementById('lbPage').style.display === 'block';
+        const topOpen = document.getElementById('topPage').style.display === 'block';
+        const streakOpen = document.getElementById('streakPage').style.display === 'block';
+        if (lbOpen) { renderLB(); if (session === ADMIN) renderAdminList(); }
+        if (topOpen) renderTop();
+        if (streakOpen) renderStreakPage();
+      }
+    });
+
+    // Real-time listener for settings
+    FB.listen('settings', (val) => {
+      if (val) { siteSettings = val; applySiteSettings(); }
+    });
+
+    checkReset();
+    applyTheme();
+    applySiteSettings();
+    dbBar('done');
+  } catch(e) {
+    console.error('initApp error:', e);
+    dbBar('err');
+    toast('❌ Gagal memuat data dari Firebase', 'error');
+  }
+
+  // Restore session
+  session = lsGet('lb_session');
+  if (session && users[session]) {
+    enterApp();
+  } else {
+    session = null;
+    document.getElementById('authOverlay').classList.add('show');
+  }
+  document.getElementById('loadScreen').classList.add('out');
+}
+
+// ── FIREBASE SAVE HELPERS ──
+async function saveUser(username) {
+  return FB.set('users/' + username, users[username]);
+}
+async function saveSettings() {
+  return FB.set('settings', siteSettings);
+}
+
+// ── WEEKLY RESET ──
+function checkReset() {
+  const now = new Date(), d = now.getDay();
+  const mon = new Date(now); mon.setDate(now.getDate() - ((d + 6) % 7)); mon.setHours(0, 0, 0, 0);
+  if (mon.getTime() > lastReset) {
+    const updates = {};
+    Object.keys(users).forEach(u => {
+      users[u].pts = 0;
+      updates['users/' + u + '/pts'] = 0;
+    });
+    lastReset = mon.getTime();
+    FB.update('', { ...updates, lastReset });
+  }
+}
+
+function getWeekRange() {
+  const now = new Date(), d = now.getDay();
+  const mon = new Date(now); mon.setDate(now.getDate() - ((d + 6) % 7));
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+  const f = dt => `${dt.getDate()}/${dt.getMonth() + 1}`;
+  return `${f(mon)} – ${f(sun)}`;
+}
+
+// Countdown
+function updateCountdown() {
+  const now = new Date(), d = now.getDay(), diff = ((8 - d) % 7) || 7;
+  const next = new Date(now); next.setDate(now.getDate() + diff); next.setHours(0, 0, 0, 0);
+  const ms = next - now, h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
+  const el = document.getElementById('countdown');
+  if (el) el.textContent = `Reset dalam ${h}j ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}d`;
+}
+setInterval(updateCountdown, 1000);
+
+// ── THEME ──
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light');
+  document.getElementById('themeBtn').textContent = darkMode ? '🌙' : '☀️';
+  const dt = document.getElementById('darkToggle');
+  if (dt) dt.classList.toggle('on', darkMode);
+  lsSet('lb_theme', darkMode ? 'dark' : 'light');
+}
+function toggleTheme() { darkMode = !darkMode; applyTheme(); }
+
+// ── SITE SETTINGS ──
+function applySiteSettings() {
+  const n = siteSettings.name || 'ArenaBoard';
+  const l = siteSettings.logo || null;
+  document.getElementById('siteTitle').textContent = n;
+  const lt = document.getElementById('logoTopbar');
+  const ltxt = document.getElementById('logoText');
+  if (l) { lt.src = l; lt.classList.add('vis'); ltxt.textContent = n; }
+  else { lt.classList.remove('vis'); ltxt.innerHTML = `⚡ Arena<em>Board</em>`; }
+  const hl = document.getElementById('homeHeroLogo'), hT = document.getElementById('homeHeroTitle');
+  if (l) { hl.src = l; hl.classList.add('vis'); hT.textContent = n; }
+  else { hl.classList.remove('vis'); hT.innerHTML = `Arena<em>Board</em>`; }
+  const sl = document.getElementById('heroLogo'), sT = document.getElementById('heroTitle');
+  if (l) { sl.src = l; sl.classList.add('vis'); sT.textContent = n; }
+  else { sl.classList.remove('vis'); sT.innerHTML = `Arena<em>Board</em>`; }
+  const lp = document.getElementById('logoPreview');
+  if (lp) lp.innerHTML = l ? `<img src="${l}" alt="logo"/>` : '🖼️';
+  const aboutTitle = document.getElementById('aboutTitle');
+  if (aboutTitle) aboutTitle.textContent = n;
+  const aImg = document.getElementById('aboutLogoImg'), aIco = document.getElementById('aboutLogoIco');
+  if (aImg) {
+    if (l) { aImg.src = l; aImg.classList.add('vis'); aIco.style.display = 'none'; }
+    else { aImg.classList.remove('vis'); aIco.style.display = ''; }
+  }
+}
+async function saveSiteName() {
+  const v = document.getElementById('siteNameInput').value.trim();
+  if (!v) { toast('Nama tidak boleh kosong', 'error'); return; }
+  siteSettings.name = v; await saveSettings(); applySiteSettings();
+  toast('Nama website diperbarui ✅', 'success');
+  document.getElementById('siteNameInput').value = '';
+}
+async function saveSiteNameStg() {
+  const v = document.getElementById('stgSiteName').value.trim();
+  if (!v) { toast('Nama tidak boleh kosong', 'error'); return; }
+  siteSettings.name = v; await saveSettings(); applySiteSettings();
+  toast('Nama website diperbarui ✅', 'success');
+  document.getElementById('stgSiteName').value = '';
+}
+function handleLogoUpload(e) {
+  const file = e.target.files[0]; if (!file) return;
+  if (file.size > 3 * 1024 * 1024) { toast('File terlalu besar (maks 3 MB)', 'error'); return; }
+  const r = new FileReader();
+  r.onload = async ev => { siteSettings.logo = ev.target.result; await saveSettings(); applySiteSettings(); toast('Logo diupload ✅', 'success'); };
+  r.readAsDataURL(file);
+}
+async function removeLogo() {
+  siteSettings.logo = null; await saveSettings(); applySiteSettings(); toast('Logo dihapus', 'info');
+}
+
+// ── AVATAR ──
+function handleAvatar(e) {
+  const file = e.target.files[0]; if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { setErr('authErr', 'File terlalu besar (maks 2 MB)'); return; }
+  const r = new FileReader();
+  r.onload = ev => { pendingAvatar = ev.target.result; document.getElementById('uploadCircle').innerHTML = `<img src="${pendingAvatar}" alt=""/>`; };
+  r.readAsDataURL(file);
+}
+function handleProfileAvatar(e) {
+  const file = e.target.files[0]; if (!file || !session) return;
+  if (file.size > 2 * 1024 * 1024) { toast('File terlalu besar (maks 2 MB)', 'error'); return; }
+  const r = new FileReader();
+  r.onload = async ev => {
+    users[session].avatar = ev.target.result;
+    await FB.update('users/' + session, { avatar: ev.target.result });
+    updateChipAv(); renderProfileModal(); renderHpProfile();
+    toast('Foto profil diperbarui ✅', 'success');
+  };
+  r.readAsDataURL(file);
+}
+
+// ── AUTH ──
+function switchTab(tab) {
+  document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+  document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+  document.getElementById('tabReg').classList.toggle('active', tab === 'register');
+  setErr('authErr', '');
+}
+function setErr(id, msg) { const el = document.getElementById(id); if (el) el.textContent = msg; }
+function pickDiv(val) {
+  selDiv = val;
+  document.querySelectorAll('.dpbtn').forEach(b => b.classList.toggle('sel', b.dataset.div === val));
+}
+
+async function doRegister() {
+  const btn = document.getElementById('registerBtn');
+  const u = document.getElementById('regUser').value.trim().toLowerCase();
+  const p = document.getElementById('regPass').value;
+  const p2 = document.getElementById('regPass2').value;
+  const err = msg => { setErr('authErr', msg); btn.disabled = false; btn.textContent = 'Buat akun →'; };
+  if (!u) return err('Username wajib diisi');
+  if (!/^[a-z0-9_]{3,20}$/.test(u)) return err('3–20 karakter, huruf kecil/angka/_');
+  if (p.length < 6) return err('Password min 6 karakter');
+  if (p !== p2) return err('Password tidak cocok');
+  btn.disabled = true; btn.textContent = 'Menyimpan…';
+  // Check if username taken (fresh from Firebase)
+  const existing = await FB.get('users/' + u);
+  if (existing) return err('Username sudah dipakai');
+  const newUser = { pass: p, pts: 0, avatar: pendingAvatar || null, divisi: selDiv || '', joined: Date.now(), streak: {}, bestStreak: 0, totalHadir: 0 };
+  await FB.set('users/' + u, newUser);
+  users[u] = newUser;
+  session = u; lsSet('lb_session', u);
+  pendingAvatar = null; selDiv = '';
+  document.querySelectorAll('.dpbtn').forEach(b => b.classList.toggle('sel', b.dataset.div === ''));
+  document.getElementById('uploadCircle').innerHTML = '📷';
+  document.getElementById('regUser').value = '';
+  document.getElementById('regPass').value = '';
+  document.getElementById('regPass2').value = '';
+  btn.disabled = false; btn.textContent = 'Buat akun →';
+  enterApp(); toast('Akun berhasil dibuat! 🎉', 'success');
+}
+
+async function doLogin() {
+  const btn = document.getElementById('loginBtn');
+  const u = document.getElementById('loginUser').value.trim().toLowerCase();
+  const p = document.getElementById('loginPass').value;
+  const err = msg => { setErr('authErr', msg); btn.disabled = false; btn.textContent = 'Masuk →'; };
+  if (!u) return err('Username wajib diisi');
+  if (!p) return err('Password wajib diisi');
+  btn.disabled = true; btn.textContent = 'Memeriksa…';
+  const userData = await FB.get('users/' + u);
+  if (!userData) return err('Username tidak ditemukan');
+  if (userData.pass !== p) return err('Password salah');
+  users[u] = userData;
+  session = u; lsSet('lb_session', u);
+  btn.disabled = false; btn.textContent = 'Masuk →';
+  enterApp(); toast(`Halo, ${u}! 👋`, 'success');
+}
+
+function enterApp() {
+  isGuest = false;
+  document.getElementById('authOverlay').classList.remove('show');
+  document.getElementById('settingsWrap').style.display = '';
+  document.getElementById('userChip').style.display = 'flex';
+  document.getElementById('guestChip').style.display = 'none';
+  document.getElementById('guestLoginBtn').style.display = 'none';
+  document.getElementById('chipName').textContent = session;
+  updateChipAv(); applySiteSettings(); goHome();
+}
+function enterGuest() {
+  isGuest = true; session = null;
+  document.getElementById('authOverlay').classList.remove('show');
+  document.getElementById('settingsWrap').style.display = 'none';
+  document.getElementById('userChip').style.display = 'none';
+  document.getElementById('guestChip').style.display = 'flex';
+  document.getElementById('guestLoginBtn').style.display = '';
+  applySiteSettings(); goHome();
+}
+function showAuth(tab) {
+  document.getElementById('authOverlay').classList.add('show');
+  switchTab(tab || 'login');
+}
+function updateChipAv() {
+  const av = document.getElementById('chipAv');
+  if (!av) return;
+  av.innerHTML = users[session]?.avatar ? `<img src="${users[session].avatar}" alt="av"/>` : '👤';
+}
+function doLogout() {
+  session = null; isGuest = false; lsDel('lb_session');
+  hideAll();
+  document.getElementById('authOverlay').classList.add('show');
+  document.getElementById('settingsWrap').style.display = 'none';
+  document.getElementById('userChip').style.display = 'none';
+  document.getElementById('guestChip').style.display = 'none';
+  document.getElementById('guestLoginBtn').style.display = 'none';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  setErr('authErr', ''); switchTab('login'); closeDD();
+}
+
+// ── NAVIGATION ──
+function hideAll() { PAGES.forEach(id => { document.getElementById(id).style.display = 'none'; }); }
+function goHome() {
+  hideAll(); document.getElementById('homePage').style.display = 'block';
+  renderHpProfile(); updateCountdown();
+}
+function goLB() {
+  hideAll(); document.getElementById('lbPage').style.display = 'block';
+  document.getElementById('adminPanel').style.display = session === ADMIN ? 'block' : 'none';
+  document.getElementById('weekRange').textContent = getWeekRange();
+  updateCountdown(); renderLB();
+  if (session === ADMIN) renderAdminList();
+}
+function goTop() { hideAll(); document.getElementById('topPage').style.display = 'block'; renderTop(); }
+function goStreak() { hideAll(); document.getElementById('streakPage').style.display = 'block'; renderStreakPage(); }
+
+// ── HOME PROFILE ──
+function renderHpProfile() {
+  const hp = document.getElementById('homeProfile');
+  if (isGuest || !session || !users[session]) { hp.style.display = 'none'; return; }
+  hp.style.display = 'flex';
+  const u = users[session];
+  document.getElementById('hpName').innerHTML = session + (u.divisi ? `<span class="div-badge div-${u.divisi}">${u.divisi}</span>` : '');
+  document.getElementById('hpMeta').textContent = u.divisi ? `${DIV_ICONS[u.divisi] || ''} ${u.divisi}` : 'Tanpa divisi';
+  document.getElementById('hpPts').textContent = u.pts || 0;
+  document.getElementById('hpStreak').textContent = calcStreak(session);
+  document.getElementById('hpTotal').textContent = u.totalHadir || 0;
+  const av = document.getElementById('hpAv');
+  av.innerHTML = u.avatar ? `<img src="${u.avatar}" alt="av"/>` : emojiFor(session);
+}
+
+// ── PROFILE MODAL ──
+function openProfile() { if (!session) return; renderProfileModal(); document.getElementById('profileOverlay').classList.add('show'); }
+function closeProfile() { document.getElementById('profileOverlay').classList.remove('show'); }
+function renderProfileModal() {
+  if (!session || !users[session]) return;
+  const u = users[session];
+  document.getElementById('profileUsername').textContent = session;
+  document.getElementById('profileJoined').textContent = `Bergabung ${new Date(u.joined || Date.now()).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+  document.getElementById('profileDivBadge').innerHTML = u.divisi ? `<span class="div-badge div-${u.divisi}">${u.divisi}</span>` : '';
+  document.getElementById('profileDivTxt').textContent = u.divisi ? `${DIV_ICONS[u.divisi] || ''} ${u.divisi}` : 'Tanpa divisi';
+  const big = document.getElementById('profileAvBig');
+  big.innerHTML = u.avatar
+    ? `<img src="${u.avatar}" alt="av"/><div class="pav-ovr">📷</div>`
+    : `<span id="profileAvSpan">${emojiFor(session)}</span><div class="pav-ovr">📷</div>`;
+  document.getElementById('psPts').textContent = u.pts || 0;
+  document.getElementById('psStreak').textContent = calcStreak(session) + '🔥';
+  document.getElementById('psTotal').textContent = u.totalHadir || 0;
+}
+
+// ── SETTINGS / ABOUT ──
+function toggleDD(e) { e.stopPropagation(); document.getElementById('ddMenu').classList.toggle('open'); }
+function closeDD() { document.getElementById('ddMenu').classList.remove('open'); }
+document.addEventListener('click', () => closeDD());
+function openAbout() { applySiteSettings(); document.getElementById('aboutOverlay').classList.add('show'); }
+function closeAbout() { document.getElementById('aboutOverlay').classList.remove('show'); }
+function openSettings() {
+  document.getElementById('darkToggle').classList.toggle('on', darkMode);
+  document.getElementById('adminStgSection').style.display = session === ADMIN ? 'block' : 'none';
+  document.getElementById('settingsOverlay').classList.add('show');
+}
+function closeSettings() { document.getElementById('settingsOverlay').classList.remove('show'); }
+
+// ── ADMIN ──
+function renderAdminList() {
+  const list = document.getElementById('adminUserList');
+  const all = Object.keys(users).filter(u => u !== ADMIN).sort((a, b) => (users[b].pts || 0) - (users[a].pts || 0));
+  if (!all.length) { list.innerHTML = '<div style="font-size:.78rem;color:var(--muted);padding:.3rem 0">Belum ada pemain terdaftar</div>'; return; }
+  list.innerHTML = all.map(u => {
+    const ud = users[u];
+    const avH = ud.avatar ? `<img src="${ud.avatar}" alt=""/>` : emojiFor(u);
+    const divB = ud.divisi ? `<span class="div-badge div-${ud.divisi}">${ud.divisi}</span>` : '';
+    return `<div class="user-row">
+      <div class="ur-av">${avH}</div>
+      <div style="flex:1;min-width:0">
+        <div class="ur-name">${u}${divB}</div>
+        <div class="ur-div">${ud.divisi ? DIV_ICONS[ud.divisi] + ' ' + ud.divisi : 'Tanpa divisi'}</div>
+      </div>
+      <span class="ur-pts">${ud.pts || 0} pts</span>
+      <div class="ur-actions">
+        <button class="ur-btn ur-add" onclick="openAddPts('${u}')">+Pts</button>
+        <button class="ur-btn ur-del" onclick="adminDel('${u}')">Hapus</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openAddPts(u) {
+  addPtsUser = u;
+  document.getElementById('addPtsTarget').textContent = u;
+  document.getElementById('ptsInput').value = '';
+  setErr('ptsErr', '');
+  document.getElementById('addPtsOverlay').classList.add('show');
+}
+function closeAddPts() { document.getElementById('addPtsOverlay').classList.remove('show'); addPtsUser = null; }
+async function confirmAdd() {
+  const v = parseInt(document.getElementById('ptsInput').value) || 0;
+  if (v <= 0) { setErr('ptsErr', 'Masukkan angka positif'); return; }
+  if (!users[addPtsUser]) { toast('User tidak ditemukan', 'error'); closeAddPts(); return; }
+  users[addPtsUser].pts = (users[addPtsUser].pts || 0) + v;
+  await FB.update('users/' + addPtsUser, { pts: users[addPtsUser].pts });
+  closeAddPts(); toast(`+${v} poin → ${addPtsUser}`, 'success');
+}
+async function confirmSet() {
+  const v = parseInt(document.getElementById('ptsInput').value);
+  if (isNaN(v) || v < 0) { setErr('ptsErr', 'Masukkan angka valid'); return; }
+  if (!users[addPtsUser]) { toast('User tidak ditemukan', 'error'); closeAddPts(); return; }
+  users[addPtsUser].pts = v;
+  await FB.update('users/' + addPtsUser, { pts: v });
+  closeAddPts(); toast(`Poin ${addPtsUser} = ${v}`, 'success');
+}
+async function adminAdd() {
+  const u = document.getElementById('adminUser').value.trim().toLowerCase();
+  const v = parseInt(document.getElementById('adminPts').value) || 0;
+  if (!u || !users[u]) { toast('User tidak ditemukan', 'error'); return; }
+  if (v <= 0) { toast('Masukkan angka positif', 'error'); return; }
+  users[u].pts = (users[u].pts || 0) + v;
+  await FB.update('users/' + u, { pts: users[u].pts });
+  toast(`+${v} poin → ${u}`, 'success');
+}
+async function adminSet() {
+  const u = document.getElementById('adminUser').value.trim().toLowerCase();
+  const v = parseInt(document.getElementById('adminPts').value);
+  if (!u || !users[u]) { toast('User tidak ditemukan', 'error'); return; }
+  if (isNaN(v) || v < 0) { toast('Angka tidak valid', 'error'); return; }
+  users[u].pts = v;
+  await FB.update('users/' + u, { pts: v });
+  toast(`Poin ${u} = ${v}`, 'success');
+}
+async function adminDel(u) {
+  if (u === ADMIN) { toast('Tidak bisa hapus admin', 'error'); return; }
+  if (!confirm(`Hapus user "${u}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+  await FB.remove('users/' + u);
+  delete users[u];
+  renderLB(); renderAdminList();
+  toast(`User "${u}" dihapus`, 'success');
+}
+async function adminResetPts() {
+  if (!confirm('Reset semua poin ke 0?')) return;
+  const updates = {};
+  Object.keys(users).forEach(u => { users[u].pts = 0; updates['users/' + u + '/pts'] = 0; });
+  lastReset = Date.now();
+  updates['lastReset'] = lastReset;
+  await FB.update('', updates);
+  renderLB(); renderAdminList();
+  toast('Semua poin direset 🔄', 'success');
+}
+async function refreshData() {
+  toast('Mengambil data terbaru…', 'info');
+  const fresh = await FB.get('users');
+  if (fresh) {
+    users = fresh; renderLB();
+    if (session === ADMIN) renderAdminList();
+    toast('Data diperbarui ✅', 'success');
+  } else toast('Gagal ambil data', 'error');
+}
+
+// ── DIV FILTER ──
+function setDivF(el, val) {
+  divF = val;
+  document.querySelectorAll('.dfbtn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active'); renderLB();
+}
+
+// ── EMOJI ──
+function emojiFor(name) {
+  const arr = ['🦊','🐯','🦁','🐻','🦋','🐲','⚡','🔥','💎','🌟','🦄','🎯'];
+  let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) & 0xfffffff;
+  return arr[h % arr.length];
+}
+
+// ── LEADERBOARD RENDER ──
+function renderLB() {
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  let filtered = Object.keys(users).filter(u => u !== ADMIN)
+    .filter(u => { if (q && !u.includes(q)) return false; if (divF && users[u].divisi !== divF) return false; return true; })
+    .sort((a, b) => (users[b].pts || 0) - (users[a].pts || 0));
+
+  const pw = document.getElementById('podiumWrap');
+  const top3 = filtered.slice(0, 3);
+  if (top3.length >= 2 && !q && !divF) {
+    pw.style.display = 'flex';
+    pw.innerHTML = top3.map((u, i) => {
+      const ud = users[u];
+      const avH = ud.avatar ? `<img src="${ud.avatar}" alt=""/>` : emojiFor(u);
+      const divB = ud.divisi ? `<span class="div-badge div-${ud.divisi}">${ud.divisi}</span>` : '';
+      const you = (u === session && !isGuest) ? '<span class="you-tag">Kamu</span>' : '';
+      const cls = ['r1','r2','r3'][i], crown = i === 0 ? '<div class="pod-crown">👑</div>' : '';
+      return `<div class="pod-card ${cls}">${crown}
+        <div class="pod-av">${avH}</div>
+        <div class="pod-medal">${['🥇','🥈','🥉'][i]}</div>
+        <div class="pod-name">${u}${divB}${you}</div>
+        <div class="pod-pts">${ud.pts || 0} pts</div>
+      </div>`;
+    }).join('');
+    filtered = filtered.slice(3);
+  } else { pw.style.display = 'none'; }
+
+  const br = document.getElementById('boardRows');
+  if (!filtered.length && !top3.length) { br.innerHTML = `<div class="empty"><div class="empty-ico">🏆</div>Belum ada peserta</div>`; return; }
+  if (!filtered.length) { br.innerHTML = ''; return; }
+  const startR = (!q && !divF) ? 4 : 1;
+  br.innerHTML = filtered.map((u, i) => {
+    const ud = users[u], rank = startR + i;
+    const avH = ud.avatar ? `<img src="${ud.avatar}" alt=""/>` : emojiFor(u);
+    const divB = ud.divisi ? `<span class="div-badge div-${ud.divisi}">${ud.divisi}</span>` : '';
+    const you = (u === session && !isGuest) ? '<span class="you-tag">Kamu</span>' : '';
+    return `<div class="lb-row${u === session && !isGuest ? ' is-you' : ''}">
+      <span class="rank-n">#${rank}</span>
+      <div class="pcell"><div class="mini-av">${avH}</div>
+        <div><div class="pname">${u}${divB}${you}</div><div class="ptag">${ud.divisi ? DIV_ICONS[ud.divisi]+' '+ud.divisi : '—'}</div></div>
+      </div>
+      <span class="score-c">${ud.pts || 0}</span>
+      <span class="delta-c">—</span>
+    </div>`;
+  }).join('');
+}
+
+// ── TOP SCORE ──
+function renderTop() {
+  const all = Object.keys(users).filter(u => u !== ADMIN)
+    .sort((a, b) => (users[b].pts || 0) - (users[a].pts || 0)).slice(0, 10);
+  const el = document.getElementById('topRows');
+  if (!all.length) { el.innerHTML = `<div class="empty" style="padding:2.5rem"><div class="empty-ico">🏅</div>Belum ada peserta</div>`; return; }
+  el.innerHTML = all.map((u, i) => {
+    const ud = users[u];
+    const avH = ud.avatar ? `<img src="${ud.avatar}" alt=""/>` : emojiFor(u);
+    const gCls = i < 3 ? `g${i+1}` : '';
+    const pCls = ['g1','g2','g3'][i] || '';
+    const you = (u === session && !isGuest) ? '<span class="you-tag">Kamu</span>' : '';
+    const streak = calcStreak(u);
+    return `<div class="top-row ${gCls}${u === session && !isGuest ? ' is-you' : ''}">
+      <div>${i < 3 ? `<span class="top-medal">${['🥇','🥈','🥉'][i]}</span>` : `<span class="top-num">#${i+1}</span>`}</div>
+      <div class="top-player"><div class="top-av">${avH}</div>
+        <div><div class="top-name">${u}${you}</div><div class="top-tag">${ud.divisi ? DIV_ICONS[ud.divisi]+' '+ud.divisi : '—'}</div></div>
+      </div>
+      <div class="top-pts ${pCls}">${ud.pts || 0}</div>
+      <div class="top-streak">${streak > 0 ? streak + '🔥' : '—'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── STREAK ──
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function calcStreak(u) {
+  const s = users[u]?.streak || {}; let cnt = 0;
+  const d = new Date();
+  while (true) {
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (s[k]) cnt++; else break;
+    d.setDate(d.getDate() - 1);
+  }
+  return cnt;
+}
+function renderStreakPage() {
+  const btn = document.getElementById('hadirBtn');
+  const now = new Date();
+  document.getElementById('absenDate').textContent = now.toLocaleDateString('id-ID', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  document.getElementById('guestBannerStreak').style.display = isGuest ? 'flex' : 'none';
+  if (isGuest || !session || !users[session]) {
+    btn.disabled = true; btn.textContent = '🔒 Login untuk absen';
+    if (calY === undefined) { calY = now.getFullYear(); calM = now.getMonth(); }
+    renderCal(); renderSBoard(); return;
+  }
+  const u = users[session], today = todayKey(), already = !!(u.streak && u.streak[today]);
+  const cur = calcStreak(session);
+  document.getElementById('myStreak').textContent = cur;
+  document.getElementById('myBest').textContent = u.bestStreak || 0;
+  document.getElementById('myTotal').textContent = u.totalHadir || 0;
+  if (already) {
+    btn.disabled = true; btn.classList.add('done'); btn.textContent = '✅ Sudah Hadir';
+    document.getElementById('absenIco').textContent = '✅';
+    document.getElementById('absenTxt').textContent = 'Kehadiran tercatat!';
+    document.getElementById('absenSub').textContent = `Streak kamu: ${cur} hari 🔥`;
+  } else {
+    btn.disabled = false; btn.classList.remove('done'); btn.innerHTML = '✋ Saya Hadir!';
+    document.getElementById('absenIco').textContent = '📋';
+    document.getElementById('absenTxt').textContent = 'Belum absen hari ini';
+    document.getElementById('absenSub').textContent = 'Klik tombol di bawah untuk mencatat kehadiranmu';
+  }
+  if (calY === undefined) { calY = now.getFullYear(); calM = now.getMonth(); }
+  renderCal(); renderSBoard();
+}
+async function doHadir() {
+  if (!session || !users[session]) return;
+  const today = todayKey();
+  if (users[session].streak && users[session].streak[today]) { toast('Kamu sudah absen hari ini!', 'info'); return; }
+  if (!users[session].streak) users[session].streak = {};
+  users[session].streak[today] = Date.now();
+  users[session].totalHadir = (users[session].totalHadir || 0) + 1;
+  const cur = calcStreak(session);
+  if (cur > (users[session].bestStreak || 0)) users[session].bestStreak = cur;
+  await FB.update('users/' + session, {
+    ['streak/' + today]: Date.now(),
+    totalHadir: users[session].totalHadir,
+    bestStreak: users[session].bestStreak
+  });
+  toast(`🔥 Hadir! Streak: ${cur} hari`, 'success');
+  renderStreakPage();
+}
+function renderCal() {
+  const mNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  document.getElementById('calLabel').textContent = `${mNames[calM]} ${calY}`;
+  const grid = document.getElementById('calGrid');
+  const sd = (session && !isGuest && users[session]) ? (users[session].streak || {}) : {};
+  const todayK = todayKey();
+  let html = '';
+  ['Min','Sen','Sel','Rab','Kam','Jum','Sab'].forEach(d => { html += `<div class="cal-dlbl">${d}</div>`; });
+  const fd = new Date(calY, calM, 1).getDay();
+  const dim = new Date(calY, calM + 1, 0).getDate();
+  for (let i = 0; i < fd; i++) html += '<div class="cal-day"></div>';
+  for (let d = 1; d <= dim; d++) {
+    const k = `${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isH = !!sd[k], isT = k === todayK;
+    let cls = 'cal-day in'; if (isT) cls += ' today'; if (isH) cls += ' hadir';
+    html += `<div class="${cls}">${d}</div>`;
+  }
+  grid.innerHTML = html;
+}
+function calPrev() { calM--; if (calM < 0) { calM = 11; calY--; } renderCal(); }
+function calNext() { calM++; if (calM > 11) { calM = 0; calY++; } renderCal(); }
+function renderSBoard() {
+  const all = Object.keys(users).filter(u => u !== ADMIN)
+    .map(u => ({ name: u, cur: calcStreak(u), total: users[u].totalHadir || 0, av: users[u].avatar }))
+    .sort((a, b) => b.cur - a.cur || b.total - a.total);
+  const el = document.getElementById('sboardRows');
+  if (!all.length) { el.innerHTML = `<div class="empty" style="padding:1.8rem"><div class="empty-ico">🔥</div>Belum ada data</div>`; return; }
+  el.innerHTML = all.map((r, i) => {
+    const isYou = !isGuest && r.name === session;
+    const avH = r.av ? `<img src="${r.av}" alt=""/>` : emojiFor(r.name);
+    return `<div class="sboard-row${isYou ? ' is-you' : ''}">
+      <span class="sb-rank">${i+1}</span>
+      <div class="sb-player"><div class="sb-av">${avH}</div>
+        <span class="sb-name">${r.name}${isYou ? '<span class="you-tag">Kamu</span>' : ''}</span>
+      </div>
+      <div class="sb-streak">${r.cur}🔥</div>
+      <div class="sb-total">${r.total}×</div>
+    </div>`;
+  }).join('');
+}
+
+// ── TOAST ──
+let toastTmr;
+function toast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  t.innerHTML = `<span>${icons[type] || ''}</span><span>${msg}</span>`;
+  t.className = `show ${type}`;
+  clearTimeout(toastTmr);
+  toastTmr = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── ENTER KEY ──
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const lf = document.getElementById('loginForm');
+  const rf = document.getElementById('registerForm');
+  if (lf && lf.style.display !== 'none') doLogin();
+  else if (rf && rf.style.display !== 'none') doRegister();
+});
+</script>
+</body>
+</html>
